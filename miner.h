@@ -238,6 +238,8 @@ int scanhash_sha256d(int thr_id, struct work *work, uint32_t max_nonce, uint64_t
 unsigned char *scrypt_buffer_alloc(int N);
 int scanhash_scrypt(int thr_id, struct work *work, uint32_t max_nonce, uint64_t *hashes_done,
 					unsigned char *scratchbuf, uint32_t N);
+int scanhash_scryptnah(int thr_id, struct work *work, uint32_t max_nonce, uint64_t *hashes_done,
+					unsigned char *scratchbuf, uint32_t N);
 int scanhash_scryptjane(int Nfactor, int thr_id, struct work *work, uint32_t max_nonce, uint64_t *hashes_done);
 int scanhash_sia(int thr_id, struct work *work, uint32_t max_nonce, uint64_t *hashes_done);
 int scanhash_sib(int thr_id, struct work *work, uint32_t max_nonce, uint64_t *hashes_done);

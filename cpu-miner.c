@@ -113,6 +113,7 @@ enum algos {
 	ALGO_QUBIT,       /* Qubit */
 	ALGO_RAINFOREST,  /* RainForest */
 	ALGO_SCRYPT,      /* scrypt */
+	ALGO_SCRYPTNAH,		/* NAH Scrypt */
 	ALGO_SCRYPTJANE,  /* Chacha */
 	ALGO_SHAVITE3,    /* Shavite3 */
 	ALGO_SHA256D,     /* SHA-256d */
@@ -180,6 +181,7 @@ static const char *algo_names[] = {
 	"qubit",
 	"rainforest",
 	"scrypt",
+	"scryptnah",
 	"scrypt-jane",
 	"shavite3",
 	"sha256d",
@@ -236,7 +238,7 @@ static int opt_fail_pause = 10;
 static int opt_time_limit = 0;
 int opt_timeout = 300;
 static int opt_scantime = 5;
-static enum algos opt_algo = ALGO_SCRYPT;
+static enum algos opt_algo = ALGO_SCRYPTNAH;
 static int opt_scrypt_n = 1024;
 static int opt_pluck_n = 128;
 static unsigned int opt_nfactor = 6;
@@ -345,7 +347,8 @@ Options:\n\
                           quark        Quark\n\
                           qubit        Qubit\n\
                           rainforest   RainForest (256)\n\
-                          scrypt       scrypt(1024, 1, 1) (default)\n\
+                          scrypt       scrypt(1024, 1, 1)\n\
+                          scryptnah    ScryptNAH (default)\n\
                           scrypt:N     scrypt(N, 1, 1)\n\
                           scrypt-jane:N (with N factor from 4 to 30)\n\
                           shavite3     Shavite3\n\
@@ -1843,6 +1846,7 @@ static void stratum_gen_work(struct stratum_ctx *sctx, struct work *work)
 			case ALGO_DROP:
 			case ALGO_JHA:
 			case ALGO_SCRYPT:
+			case ALGO_SCRYPTNAH:
 			case ALGO_SCRYPTJANE:
 			case ALGO_NEOSCRYPT:
 			case ALGO_PLUCK:
@@ -1999,7 +2003,7 @@ static void *miner_thread(void *userdata)
 		}
 	}
 
-	if (opt_algo == ALGO_SCRYPT) {
+	if (opt_algo == ALGO_SCRYPT || opt_algo == ALGO_SCRYPTNAH) {
 		scratchbuf = scrypt_buffer_alloc(opt_scrypt_n);
 		if (!scratchbuf) {
 			applog(LOG_ERR, "scrypt buffer allocation failed");
@@ -2167,6 +2171,7 @@ static void *miner_thread(void *userdata)
 		if (max64 <= 0) {
 			switch (opt_algo) {
 			case ALGO_SCRYPT:
+			case ALGO_SCRYPTNAH:
 			case ALGO_NEOSCRYPT:
 				max64 = opt_scrypt_n < 16 ? 0x3ffff : 0x3fffff / opt_scrypt_n;
 				if (opt_nfactor > 3)
@@ -2359,6 +2364,9 @@ static void *miner_thread(void *userdata)
 			break;
 		case ALGO_SCRYPT:
 			rc = scanhash_scrypt(thr_id, &work, max_nonce, &hashes_done, scratchbuf, opt_scrypt_n);
+			break;
+		case ALGO_SCRYPTNAH:
+			rc = scanhash_scryptnah(thr_id, &work, max_nonce, &hashes_done, scratchbuf, opt_scrypt_n);
 			break;
 		case ALGO_SCRYPTJANE:
 			rc = scanhash_scryptjane(opt_scrypt_n, thr_id, &work, max_nonce, &hashes_done);

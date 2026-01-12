@@ -235,6 +235,7 @@ typedef uint16_t rf_u16;
 typedef uint32_t rf_u32;
 typedef uint64_t rf_u64;
 #else
+typedef unsigned long ulong;
 typedef __attribute__((may_alias)) uint8_t  rf_u8;
 typedef __attribute__((may_alias)) uint16_t rf_u16;
 typedef __attribute__((may_alias)) uint32_t rf_u32;

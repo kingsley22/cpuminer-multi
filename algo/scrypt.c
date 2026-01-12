@@ -756,6 +756,75 @@ extern int scanhash_scrypt(int thr_id, struct work *work, uint32_t max_nonce, ui
 	return 0;
 }
 
+extern int scanhash_scryptnah(int thr_id, struct work *work, uint32_t max_nonce, uint64_t *hashes_done,
+	unsigned char *scratchbuf, uint32_t N)
+{
+	uint32_t *pdata = work->data;
+	uint32_t *ptarget = work->target;
+	uint32_t data[SCRYPT_MAX_WAYS * 20], hash[SCRYPT_MAX_WAYS * 8];
+	uint32_t midstate[8];
+	uint32_t n = pdata[19] - 1;
+	const uint32_t Htarg = ptarget[7];
+	int throughput = scrypt_best_throughput();
+	int i;
+	
+#ifdef HAVE_SHA256_4WAY
+	if (sha256_use_4way())
+		throughput *= 4;
+#endif
+	
+	for (i = 0; i < throughput; i++)
+		memcpy(data + i * 20, pdata, 80);
+	
+	sha256_init(midstate);
+	sha256_transform(midstate, data, 0);
+	
+	do {
+		for (i = 0; i < throughput; i++)
+			data[i * 20 + 19] = ++n;
+		
+#if defined(HAVE_SHA256_4WAY)
+		if (throughput == 4)
+			scrypt_1024_1_1_256_4way(data, hash, midstate, scratchbuf, N);
+		else
+#endif
+#if defined(HAVE_SCRYPT_3WAY) && defined(HAVE_SHA256_4WAY)
+		if (throughput == 12)
+			scrypt_1024_1_1_256_12way(data, hash, midstate, scratchbuf, N);
+		else
+#endif
+#if defined(HAVE_SCRYPT_6WAY)
+		if (throughput == 24)
+			scrypt_1024_1_1_256_24way(data, hash, midstate, scratchbuf, N);
+		else
+#endif
+#if defined(HAVE_SCRYPT_3WAY)
+		if (throughput == 3)
+			scrypt_1024_1_1_256_3way(data, hash, midstate, scratchbuf, N);
+		else
+#endif
+		scrypt_1024_1_1_256(data, hash, midstate, scratchbuf, N);
+
+		/* Apply the fork's "inverse" PoW: hash = ~hash (256-bit bitwise complement) */
+		for (int j = 0; j < throughput * 8; j++) {
+			hash[j] = ~hash[j];
+		}
+		
+		for (i = 0; i < throughput; i++) {
+			if (unlikely(hash[i * 8 + 7] <= Htarg && fulltest(hash + i * 8, ptarget))) {
+				work_set_target_ratio(work, hash + i * 8);
+				*hashes_done = n - pdata[19] + 1;
+				pdata[19] = data[i * 20 + 19];
+				return 1;
+			}
+		}
+	} while (likely(n < max_nonce && !work_restart[thr_id].restart));
+	
+	*hashes_done = n - pdata[19] + 1;
+	pdata[19] = n;
+	return 0;
+}
+
 /* simple cpu test (util.c) */
 void scrypthash(void *output, const void *input, uint32_t N)
 {
